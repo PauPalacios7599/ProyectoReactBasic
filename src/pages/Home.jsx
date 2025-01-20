@@ -1,56 +1,72 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import CountryCard from '../components/CountryCard'
 import '../styles/Home.css'
-import PropTypes from 'prop-types'
 
 const Home = ({ toggleFavorite, favorites }) => {
+  const [searchQuery, setSearchQuery] = useState('')
   const [countries, setCountries] = useState([])
-  const [search, setSearch] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch de todos los países
   useEffect(() => {
-    fetch('https://restcountries.com/v3.1/all')
-      .then((response) => response.json())
-      .then((data) => setCountries(data))
+    const fetchCountries = async () => {
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all')
+        const data = await response.json()
+        // Extrae solo los datos necesarios
+        const formattedCountries = data.map((country) => ({
+          name: country.name.common,
+          flag: country.flags.svg
+        }))
+        setCountries(formattedCountries)
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Error fetching countries:', error)
+        setIsLoading(false)
+      }
+    }
+
+    fetchCountries()
   }, [])
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value)
+  }
 
   // Filtrar países según la búsqueda
   const filteredCountries = countries.filter((country) =>
-    country.name.common.toLowerCase().includes(search.toLowerCase())
+    country.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
     <div>
-      <h1>Home</h1>
-      <input
-        type='text'
-        placeholder='Search countries...'
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <ul>
-        {filteredCountries.map((country) => (
-          <li key={country.cca3}>
-            <Link to={`/country/${country.name.common}`}>
-              {country.name.common}
-            </Link>
-            <button
-              onClick={() => toggleFavorite(country.name.common)}
-              style={{
-                marginLeft: '10px',
-                backgroundColor: favorites.includes(country.name.common)
-                  ? 'red'
-                  : 'green',
-                color: 'white'
-              }}
-            >
-              {favorites.includes(country.name.common)
-                ? 'Remove from Favorites'
-                : 'Add to Favorites'}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className='search-container'>
+        <input
+          type='text'
+          placeholder='Search for a country...'
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className='search-input'
+        />
+      </div>
+
+      {isLoading ? (
+        <p>Loading countries...</p>
+      ) : (
+        <ul className='country-list'>
+          {filteredCountries.length > 0 ? (
+            filteredCountries.map((country) => (
+              <CountryCard
+                key={country.name}
+                country={country}
+                toggleFavorite={toggleFavorite}
+                isFavorite={favorites.some((fav) => fav.name === country.name)} // Verificación corregida
+              />
+            ))
+          ) : (
+            <p>No countries found</p>
+          )}
+        </ul>
+      )}
     </div>
   )
 }
